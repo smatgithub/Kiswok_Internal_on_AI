@@ -1,0 +1,16 @@
+{
+  "name": "kiswok-internal-v3",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @kiswok/api & npm run dev -w @kiswok/web",
+    "dev:api": "npm run dev -w @kiswok/api",
+    "dev:web": "npm run dev -w @kiswok/web",
+    "build": "npm run build -w @kiswok/shared && npm run build -w @kiswok/api && npm run build -w @kiswok/web",
+    "start:api": "npm run start -w @kiswok/api"
+  }
+}
