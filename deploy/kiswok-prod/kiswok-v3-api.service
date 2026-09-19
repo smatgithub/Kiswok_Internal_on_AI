@@ -1,0 +1,15 @@
+[Unit]
+Description=Kiswok Internal V3 Nest API
+After=network.target
+
+[Service]
+Type=simple
+User=kiswok
+WorkingDirectory=/home/kiswok/Workspace/Kiswok_Internal_on_AI
+EnvironmentFile=/home/kiswok/Workspace/Kiswok_Internal_on_AI/.env
+ExecStart=/home/kiswok/Workspace/Kiswok_Internal_on_AI/deploy/kiswok-prod/start-api.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

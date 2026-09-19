@@ -12,12 +12,22 @@ function isPrivateLanHost(hostname: string): boolean {
 
 function isAllowedWebOrigin(origin?: string): boolean {
   if (!origin) return true;
-  const extra = process.env.WEB_ORIGIN || '';
-  if (extra && origin === extra) return true;
+  const extras = (process.env.WEB_ORIGIN || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (extras.includes(origin)) return true;
   try {
     const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    if (
+      url.protocol === 'https:' &&
+      (host === 'kiswok.com' || host.endsWith('.kiswok.com'))
+    ) {
+      return true;
+    }
     const port = url.port || (url.protocol === 'https:' ? '443' : '80');
-    return isPrivateLanHost(url.hostname) && port === '3000';
+    return isPrivateLanHost(host) && port === '3000';
   } catch {
     return false;
   }
