@@ -10,13 +10,8 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import {
-  DuplicateCheckResult,
-  DuplicateMatch,
-  SapPipelineEntry,
-  SapSourceItem,
-} from '@kiswok/shared';
 import { api } from '@/lib/api';
+import type { DuplicateCheckResult, DuplicateMatch, SapPipelineEntry, SapSourceItem } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
