@@ -6,7 +6,7 @@ After=network.target kiswok-v3-api.service
 Type=simple
 User=kiswok
 WorkingDirectory=/home/kiswok/Workspace/Kiswok_Internal_on_AI/apps/web
-Environment=HOSTNAME=127.0.0.1
+Environment=HOSTNAME=0.0.0.0
 Environment=PORT=3010
 Environment=API_PROXY_TARGET=http://127.0.0.1:4010
 ExecStart=/home/kiswok/Workspace/Kiswok_Internal_on_AI/deploy/kiswok-prod/start-web.sh

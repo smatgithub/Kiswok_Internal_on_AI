@@ -27,7 +27,7 @@ function isAllowedWebOrigin(origin?: string): boolean {
       return true;
     }
     const port = url.port || (url.protocol === 'https:' ? '443' : '80');
-    return isPrivateLanHost(host) && port === '3000';
+    return isPrivateLanHost(host) && (port === '3000' || port === '3010');
   } catch {
     return false;
   }
@@ -69,9 +69,10 @@ async function bootstrap() {
     }),
   );
   const port = Number(process.env.API_PORT || 4010);
-  await app.listen(port);
+  const host = process.env.API_HOST || (process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0');
+  await app.listen(port, host);
   // eslint-disable-next-line no-console
-  console.log(`Kiswok Internal V3 API listening on :${port}`);
+  console.log(`Kiswok Internal V3 API listening on ${host}:${port}`);
 }
 
 bootstrap();
