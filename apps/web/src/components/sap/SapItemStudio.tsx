@@ -1655,9 +1655,16 @@ export default function SapItemStudio() {
                       procurementType: 'procurementTypes',
                       productType: 'productTypes',
                     };
+                    const lookupKey = lookupMap[field] as
+                      | 'mrpTypes'
+                      | 'procurementTypes'
+                      | 'productTypes'
+                      | undefined;
+                    const fromLookups =
+                      lookupKey && lookups ? lookups[lookupKey] : undefined;
                     let opts: Array<{ value: string; label: string }> =
-                      (lookups as any)?.[lookupMap[field]]?.length
-                        ? (lookups as any)[lookupMap[field]]
+                      fromLookups && fromLookups.length
+                        ? fromLookups
                         : fallback[field] || [];
                     // Keep suggested/current value selectable even if lookups lag
                     const current = String(value || '').trim().toUpperCase();

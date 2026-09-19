@@ -320,7 +320,8 @@ export default function IcsoftItemsPage() {
       const next = isOn ? prev.filter((x) => x !== item.rawMatId) : [...prev, item.rawMatId];
       setSelectedItemMeta((meta) => {
         if (isOn) {
-          const { [item.rawMatId]: _removed, ...rest } = meta;
+          const rest = { ...meta };
+          delete rest[item.rawMatId];
           return rest;
         }
         return { ...meta, [item.rawMatId]: item };
