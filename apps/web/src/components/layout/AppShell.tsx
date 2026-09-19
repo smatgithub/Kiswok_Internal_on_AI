@@ -8,6 +8,13 @@ import { CommandPalette } from './CommandPalette';
 import { useAuth } from '@/lib/auth-context';
 
 function crumbsFor(pathname: string) {
+  if (pathname.startsWith('/master-data-tracking')) {
+    return [
+      { label: 'Operations' },
+      { label: 'Master Data' },
+      { label: 'Tracking' },
+    ];
+  }
   if (pathname.startsWith('/icsoft-items')) {
     return [
       { label: 'Operations' },

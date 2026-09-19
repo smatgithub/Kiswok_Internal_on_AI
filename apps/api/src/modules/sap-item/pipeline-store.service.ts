@@ -2,7 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  DuplicateOverride,
   ExportRecord,
+  SapItemRequester,
   SapPipelineEntry,
   SapPipelineStage,
   SapSourceItem,
@@ -26,7 +28,7 @@ export class PipelineStoreService {
     const dir = this.dir();
     const entries = fs
       .readdirSync(dir)
-      .filter((f) => f.endsWith('.json'))
+      .filter((f) => f.endsWith('.json') && !f.startsWith('._'))
       .map((f) => {
         const full = path.join(dir, f);
         try {
@@ -84,6 +86,7 @@ export class PipelineStoreService {
     rawMatId: number;
     icsoftCode: string;
     rawMatName?: string | null;
+    productType?: string | null;
     productGroup?: string | null;
     baseUom?: string | null;
     plant?: string | null;
@@ -91,11 +94,18 @@ export class PipelineStoreService {
     locationId?: number | null;
     source?: SapSourceItem | null;
     stage?: SapPipelineStage;
+    duplicateReview?: DuplicateOverride | null;
+    origin?: 'icsoft' | 'manual';
+    requestedBy?: SapItemRequester | null;
+    plants?: string[] | null;
+    slocs?: string[] | null;
+    locationIds?: number[] | null;
   }): SapPipelineEntry {
     const existing = this.getByRawMatId(input.rawMatId);
     if (existing && existing.stage !== 'exported') {
       existing.icsoftCode = input.icsoftCode;
       existing.rawMatName = input.rawMatName ?? existing.rawMatName;
+      existing.productType = input.productType ?? existing.productType;
       existing.productGroup = input.productGroup ?? existing.productGroup;
       existing.baseUom = input.baseUom ?? existing.baseUom;
       existing.plant = input.plant ?? existing.plant;
@@ -103,6 +113,12 @@ export class PipelineStoreService {
         input.storageLocation ?? existing.storageLocation;
       existing.locationId = input.locationId ?? existing.locationId;
       if (input.source) existing.source = input.source;
+      if (input.duplicateReview) existing.duplicateReview = input.duplicateReview;
+      if (input.origin) existing.origin = input.origin;
+      if (input.requestedBy) existing.requestedBy = input.requestedBy;
+      if (input.plants) existing.plants = input.plants;
+      if (input.slocs) existing.slocs = input.slocs;
+      if (input.locationIds) existing.locationIds = input.locationIds;
       if (existing.stage === 'pending') {
         return this.save(existing);
       }
@@ -115,6 +131,7 @@ export class PipelineStoreService {
       rawMatId: input.rawMatId,
       icsoftCode: input.icsoftCode,
       rawMatName: input.rawMatName ?? null,
+      productType: input.productType ?? input.source?.productType ?? null,
       productGroup: input.productGroup ?? null,
       baseUom: input.baseUom ?? null,
       plant: input.plant ?? null,
@@ -132,6 +149,12 @@ export class PipelineStoreService {
       processedAt: null,
       exportedAt: null,
       updatedAt: now,
+      duplicateReview: input.duplicateReview ?? null,
+      origin: input.origin ?? 'icsoft',
+      requestedBy: input.requestedBy ?? null,
+      plants: input.plants ?? null,
+      slocs: input.slocs ?? null,
+      locationIds: input.locationIds ?? null,
     };
     return this.save(entry);
   }
@@ -145,14 +168,24 @@ export class PipelineStoreService {
       answers: WizardAnswers;
       sheetRows: Record<string, Record<string, string>>;
     },
+    pipelineEntryId?: string,
   ): SapPipelineEntry {
-    let entry = this.getByRawMatId(rawMatId);
+    let entry: SapPipelineEntry | null = null;
+    if (pipelineEntryId) {
+      try {
+        entry = this.get(pipelineEntryId);
+      } catch {
+        entry = null;
+      }
+    }
+    if (!entry) entry = this.getByRawMatId(rawMatId);
     const now = new Date().toISOString();
     if (!entry) {
       entry = this.create({
         rawMatId,
         icsoftCode: payload.source.IcsoftCode,
         rawMatName: payload.source.Rawmatname,
+        productType: payload.answers.productType || payload.source.productType,
         productGroup: payload.source.ProductGroup,
         baseUom: payload.source.baseuom,
         plant: payload.source.sap_plantcode,
@@ -167,6 +200,8 @@ export class PipelineStoreService {
     entry.batchItemId = payload.batchItemId;
     entry.source = payload.source;
     entry.answers = payload.answers;
+    entry.productType =
+      payload.answers.productType || payload.source.productType || entry.productType;
     entry.sheetRows = payload.sheetRows;
     entry.processedAt = now;
     return this.save(entry);

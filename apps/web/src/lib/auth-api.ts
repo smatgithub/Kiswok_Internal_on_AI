@@ -4,8 +4,7 @@ import type {
   AuthUser,
 } from '@kiswok/shared';
 import { getStoredToken } from '@/lib/auth-storage';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4010/api';
+import { getApiBase } from '@/lib/api-base';
 
 async function authRequest<T>(
   path: string,
@@ -21,15 +20,22 @@ async function authRequest<T>(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers,
-    cache: 'no-store',
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBase()}${path}`, {
+      ...init,
+      headers,
+      cache: 'no-store',
+    });
+  } catch {
+    throw new Error(
+      'Cannot reach V3 API. Confirm npm run dev:api is running on port 4010.',
+    );
+  }
 
   let body: {
     success?: boolean;
-    message?: string;
+    message?: string | string[];
     data?: T;
   } = {};
   try {
@@ -39,9 +45,12 @@ async function authRequest<T>(
   }
 
   if (!res.ok || body.success === false) {
-    throw new Error(
-      typeof body.message === 'string' ? body.message : 'Request failed',
-    );
+    const msg = Array.isArray(body.message)
+      ? body.message.join('; ')
+      : typeof body.message === 'string'
+        ? body.message
+        : `Request failed (${res.status})`;
+    throw new Error(msg);
   }
 
   return (body.data !== undefined ? body.data : body) as T;
@@ -76,7 +85,7 @@ export const authApi = {
     newPassword: string;
     confirmPassword: string;
   }) =>
-    fetch(`${API_URL}/auth/reset-password`, {
+    fetch(`${getApiBase()}/auth/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

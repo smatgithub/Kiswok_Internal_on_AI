@@ -42,6 +42,10 @@ const DATA_START_ROW = 9;
 export class GoldTemplateExporter {
   private templatePath(): string {
     const candidates = [
+      path.resolve(process.cwd(), 'assets/templates/Gold_SAP_Template - ZRAW-v2.xml'),
+      path.resolve(process.cwd(), '../../assets/templates/Gold_SAP_Template - ZRAW-v2.xml'),
+      path.resolve(__dirname, '../../../../../assets/templates/Gold_SAP_Template - ZRAW-v2.xml'),
+      path.resolve(__dirname, '../../../../../../assets/templates/Gold_SAP_Template - ZRAW-v2.xml'),
       path.resolve(process.cwd(), 'assets/templates/Gold_SAP_Template - ZRAW.xml'),
       path.resolve(process.cwd(), '../../assets/templates/Gold_SAP_Template - ZRAW.xml'),
       path.resolve(__dirname, '../../../../../assets/templates/Gold_SAP_Template - ZRAW.xml'),
@@ -62,7 +66,16 @@ export class GoldTemplateExporter {
     for (const sheet of DATA_SHEETS) {
       sheetPayload[sheet] = [];
     }
+    const seen = new Set<string>();
     for (const item of items) {
+      const liveCode = String(item.source?.sap_item_code || '').trim();
+      const product = String(item.answers.productNumber || '').trim();
+      if (liveCode && product && liveCode === product) continue;
+      const key = product.toUpperCase();
+      if (key) {
+        if (seen.has(key)) continue;
+        seen.add(key);
+      }
       const rowsBySheet = item.sheetRows
         ? this.normalizeCommitted(item)
         : buildSheetRows(item.answers);
@@ -144,12 +157,20 @@ export class GoldTemplateExporter {
     summary.addRow(['Item Count', items.length]);
     summary.addRow(['Format', 'XLSX (Excel) — mirror of gold SAP template columns']);
     summary.addRow([]);
-    summary.addRow(['IcSoft Code', 'SAP Product Number', 'Plant', 'Product Type']);
+    summary.addRow(['IcSoft Code', 'SAP Product Number', 'Plant(s)', 'Product Type']);
     for (const item of items) {
+      const plants = (
+        item.answers.valuationAreas?.length
+          ? item.answers.valuationAreas
+          : String(item.answers.plant || '')
+              .split(/[,;]/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+      ).join(', ');
       summary.addRow([
         item.source?.IcsoftCode || item.answers.oldProductNumber,
         item.answers.productNumber,
-        item.answers.plant,
+        plants || item.answers.plant,
         item.answers.productType,
       ]);
     }

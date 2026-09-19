@@ -15,6 +15,8 @@ export type DbAccessMode = 'read' | 'write';
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
   private pools: Record<string, sql.ConnectionPool> = {};
+  /** Single-flight connect so /categories and /options do not race pool.connect(). */
+  private connecting: Partial<Record<string, Promise<sql.ConnectionPool>>> = {};
 
   constructor(private readonly config: ConfigService) {}
 
@@ -69,12 +71,19 @@ export class DatabaseService implements OnModuleDestroy {
         enableArithAbort: true,
       },
       requestTimeout: 300000,
+      // Must stay below tarn createTimeoutMillis so a real TDS error surfaces
+      // instead of Tarn's "operation timed out for an unknown reason".
       connectionTimeout: 30000,
       pool: {
         max: 15,
         min: 0,
-        idleTimeoutMillis: 20000,
-      },
+        idleTimeoutMillis: 30000,
+        acquireTimeoutMillis: 60000,
+        createTimeoutMillis: 60000,
+        destroyTimeoutMillis: 5000,
+        reapIntervalMillis: 1000,
+        createRetryIntervalMillis: 200,
+      } as sql.config['pool'],
     };
   }
 
@@ -89,33 +98,117 @@ export class DatabaseService implements OnModuleDestroy {
   ): Promise<sql.ConnectionPool> {
     const db = databaseName || this.defaultDatabase();
     const key = this.poolKey(db, mode);
-    if (!this.pools[key]) {
-      const pool = new sql.ConnectionPool({
-        ...this.baseConfig(mode),
-        database: db,
-      });
-      pool.on('error', (err) => {
-        // eslint-disable-next-line no-console
-        console.error(`SQL pool error [${key}]`, err);
-      });
-      this.pools[key] = pool;
+    const existing = this.pools[key] as
+      | (sql.ConnectionPool & { healthy?: boolean })
+      | undefined;
+    if (existing?.connected && existing.healthy !== false) {
+      return existing;
     }
-    const pool = this.pools[key];
-    if (!pool.connected) {
+    if (this.connecting[key]) {
+      return this.connecting[key];
+    }
+    this.connecting[key] = this.openPool(db, mode, key).finally(() => {
+      delete this.connecting[key];
+    });
+    return this.connecting[key];
+  }
+
+  private async openPool(
+    db: string,
+    mode: DbAccessMode,
+    key: string,
+  ): Promise<sql.ConnectionPool> {
+    await this.dropPool(key);
+    const pool = new sql.ConnectionPool({
+      ...this.baseConfig(mode),
+      database: db,
+    });
+    pool.on('error', (err) => {
+      // eslint-disable-next-line no-console
+      console.error(`SQL pool error [${key}]`, err);
+      void this.dropPool(key);
+    });
+    try {
       await pool.connect();
+    } catch (err) {
+      try {
+        await pool.close();
+      } catch {
+        /* ignore */
+      }
+      throw this.wrapSqlError(err, db, mode);
     }
+    this.pools[key] = pool;
     return pool;
   }
 
-  /** Read queries — uses DB_SERVER (replica). */
+  private async dropPool(key: string): Promise<void> {
+    const pool = this.pools[key];
+    delete this.pools[key];
+    if (!pool) return;
+    try {
+      await pool.close();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private wrapSqlError(err: unknown, databaseName: string, mode: DbAccessMode): Error {
+    const raw = err as { message?: string; name?: string; code?: string };
+    const message = String(raw?.message || err);
+    if (
+      message.startsWith('SQL pool timed out') ||
+      message.startsWith('SQL read ') ||
+      message.startsWith('SQL write ')
+    ) {
+      return err instanceof Error ? err : new Error(message);
+    }
+    const host = mode === 'write' ? this.writeServer() : this.server();
+    if (/timed out for an unknown reason/i.test(message) || raw?.name === 'TimeoutError') {
+      return new Error(
+        `SQL pool timed out opening a connection to ${host}:1433 database ${databaseName}. ` +
+          `This is usually office VPN, a stale pool after a network drop, or the replica not accepting logins — not a slow invent_grntype query. ` +
+          `(${message})`,
+      );
+    }
+    return new Error(
+      `SQL ${mode} ${host}/${databaseName} failed: ${message}${raw?.code ? ` [${raw.code}]` : ''}`,
+    );
+  }
+
+  private async exec<T>(
+    databaseName: string,
+    mode: DbAccessMode,
+    build: (request: sql.Request) => Promise<sql.IResult<T>>,
+  ): Promise<T[]> {
+    const pool = await this.getPool(databaseName, mode);
+    const request = pool.request();
+    const result = await build(request);
+    return result.recordset;
+  }
+
+  /** Read queries — uses DB_SERVER (replica), retries once, then write host. */
   async run<T = Record<string, unknown>>(
     databaseName: string,
     build: (request: sql.Request) => Promise<sql.IResult<T>>,
   ): Promise<T[]> {
-    const pool = await this.getPool(databaseName, 'read');
-    const request = pool.request();
-    const result = await build(request);
-    return result.recordset;
+    try {
+      return await this.exec(databaseName, 'read', build);
+    } catch (err) {
+      await this.dropPool(this.poolKey(databaseName, 'read'));
+      try {
+        return await this.exec(databaseName, 'read', build);
+      } catch (retryErr) {
+        if (this.writeServer() && this.writeServer() !== this.server()) {
+          try {
+            return await this.exec(databaseName, 'write', build);
+          } catch (writeErr) {
+            throw this.wrapSqlError(writeErr, databaseName, 'write');
+          }
+        }
+        throw this.wrapSqlError(retryErr, databaseName, 'read');
+      }
+    }
   }
 
   /** Write queries — uses DB_WRITE_SERVER / DB_REPORT_SERVER (primary). */

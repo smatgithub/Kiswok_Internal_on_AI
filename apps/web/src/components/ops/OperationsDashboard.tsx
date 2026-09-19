@@ -22,10 +22,10 @@ const ACTIVITY = [
 ];
 
 const QUEUE = [
-  { code: 'IRON0003', name: 'STEEL SCRAP-C.I. (HIGH SULPHUR)', plant: '20AA', sloc: 'MXST', uom: 'KGM' },
-  { code: 'CONGEDB0032', name: 'DRILL BIT 10MM X 116 FLUTE LENGTH (T/S)', plant: '2001', sloc: 'WUNM', uom: 'EA' },
-  { code: 'FNDCHEM0001', name: 'BORIC ACID', plant: '20AA', sloc: '1001', uom: 'KGM' },
-  { code: 'RMDIIR0007', name: 'STEEL SCRAP D.I.(CHALLA/GITTY)', plant: '20AA', sloc: 'MXST', uom: 'KGM' },
+  { code: 'IRON0003', name: 'STEEL SCRAP-C.I. (HIGH SULPHUR)', matType: 'ZRAW', plant: '20AA', sloc: 'MXST', uom: 'KGM' },
+  { code: 'CONGEDB0032', name: 'DRILL BIT 10MM X 116 FLUTE LENGTH (T/S)', matType: 'ZCON', plant: '2001', sloc: 'WUNM', uom: 'EA' },
+  { code: 'FNDCHEM0001', name: 'BORIC ACID', matType: 'ZRAW', plant: '20AA', sloc: '1001', uom: 'KGM' },
+  { code: 'RMDIIR0007', name: 'STEEL SCRAP D.I.(CHALLA/GITTY)', matType: 'ZRAW', plant: '20AA', sloc: 'MXST', uom: 'KGM' },
 ];
 
 export default function OperationsDashboard() {
@@ -43,7 +43,7 @@ export default function OperationsDashboard() {
             <Clock3 className="h-4 w-4" />
             Last sync 2m ago
           </Button>
-          <Link href="/sap-items">
+          <Link href="/master-data-tracking">
             <Button size="sm" variant="primary">
               <PackagePlus className="h-4 w-4" />
               New SAP item
@@ -88,6 +88,7 @@ export default function OperationsDashboard() {
           <CardHeader title="Quick actions" description="Fewest clicks to value" />
           <CardBody className="space-y-2">
             {[
+              { href: '/master-data-tracking', label: 'Master Data Tracking', hint: 'Find · duplicate · progress' },
               { href: '/sap-items', label: 'Open SAP Item Studio', hint: 'Select → wizard → export' },
               { href: '/sap-items?tab=batch', label: 'Resume last batch', hint: 'Inline grid edit' },
             ].map((a) => (
@@ -126,6 +127,7 @@ export default function OperationsDashboard() {
                 <tr>
                   <th>Code</th>
                   <th>Description</th>
+                  <th>Mat Type</th>
                   <th>Plant</th>
                   <th>SLoc</th>
                   <th>UoM</th>
@@ -136,6 +138,7 @@ export default function OperationsDashboard() {
                   <tr key={row.code}>
                     <td className="numeric font-semibold">{row.code}</td>
                     <td className="max-w-[320px] truncate">{row.name}</td>
+                    <td className="numeric">{row.matType}</td>
                     <td className="numeric">{row.plant}</td>
                     <td className="numeric">{row.sloc}</td>
                     <td className="numeric">{row.uom}</td>

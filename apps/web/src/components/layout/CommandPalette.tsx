@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 
 const COMMANDS = [
+  { id: 'mdt', label: 'Open Master Data Tracking', href: '/master-data-tracking', keywords: 'find duplicate request progress created sap item' },
   { id: 'ops', label: 'Go to Operations Dashboard', href: '/', keywords: 'home kpi' },
   { id: 'icsoft', label: 'Open IcSoft Items', href: '/icsoft-items', keywords: 'erp rawmaterial category master' },
   { id: 'sap', label: 'Open SAP Item Creation', href: '/sap-items', keywords: 'zraw material master migrate' },

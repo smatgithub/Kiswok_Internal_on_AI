@@ -20,6 +20,11 @@ import { KpiCard } from '@/components/ui/KpiCard';
 import { cn } from '@/lib/cn';
 import { api, IcsoftCategory, IcsoftItemOption } from '@/lib/api';
 import { ItemDetailDrawer } from '@/components/icsoft/ItemDetailDrawer';
+import { DuplicateReviewPanel } from '@/components/sap/DuplicateReviewPanel';
+import {
+  DUPLICATE_OVERRIDE_MIN_REASON,
+  DuplicateCheckResult,
+} from '@kiswok/shared';
 
 const ALL = 'ALL';
 
@@ -54,23 +59,162 @@ export default function IcsoftItemsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [queueing, setQueueing] = useState(false);
   const [toast, setToast] = useState('');
+  const [overrides, setOverrides] = useState<Record<number, string>>({});
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewQueue, setReviewQueue] = useState<IcsoftItemOption[]>([]);
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const [reviewResults, setReviewResults] = useState<
+    Record<number, DuplicateCheckResult>
+  >({});
+  const [reviewReason, setReviewReason] = useState('');
+  const [pendingAction, setPendingAction] = useState<null | 'queue' | 'grid'>(
+    null,
+  );
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(''), 3200);
     return () => clearTimeout(t);
   }, [toast]);
 
-  async function queueSelectedForSap() {
+  async function finishEnqueue(
+    ids: number[],
+    action: 'queue' | 'grid',
+    nextOverrides: Record<number, string> = overrides,
+  ) {
+    const overridePayload = ids
+      .filter((id) => (nextOverrides[id] || '').trim().length >= DUPLICATE_OVERRIDE_MIN_REASON)
+      .map((id) => ({ rawMatId: id, reason: nextOverrides[id].trim() }));
+    const queued = await api.enqueuePipeline(ids, undefined, overridePayload);
+    if (action === 'queue') {
+      setToast(`${queued.data.length} item(s) queued for SAP · open SAP Item Creation`);
+      return;
+    }
+    setLoadingGrid(true);
+    try {
+      setToast(
+        `Batch of ${queued.data.length} item(s) ready · Extended vs Not yet shown in grid`,
+      );
+      const res = await api.icsoftGrid({
+        selectedGrnTypes: selectedCategories,
+        selectedRawMatIds: ids,
+        allItems: false,
+      });
+      setRows(res.data);
+      setHasRun(true);
+      setDrawerOpen(false);
+      setSelectedRowKey(null);
+    } finally {
+      setLoadingGrid(false);
+    }
+  }
+
+  async function ensureDuplicatesThenEnqueue(action: 'queue' | 'grid') {
     if (allItems || selectedItemIds.length === 0) return;
     setQueueing(true);
     setError('');
     try {
-      const res = await api.enqueuePipeline(selectedItemIds);
-      setToast(`${res.data.length} item(s) queued for SAP · open SAP Item Creation`);
+      const res = await api.reviewDuplicates({ rawMatIds: selectedItemIds });
+      const byId: Record<number, DuplicateCheckResult> = {};
+      for (const row of res.data) {
+        if (row.query.rawMatId != null) byId[row.query.rawMatId] = row;
+      }
+      setReviewResults((prev) => ({ ...prev, ...byId }));
+      const blocked = selectedItemIds
+        .filter((id) => {
+          if (byId[id]?.verdict !== 'duplicate') return false;
+          return (overrides[id] || '').trim().length < DUPLICATE_OVERRIDE_MIN_REASON;
+        })
+        .map(
+          (id) =>
+            selectedItemMeta[id] ||
+            itemOptions.find((i) => i.rawMatId === id) ||
+            null,
+        )
+        .filter((item): item is IcsoftItemOption => Boolean(item));
+      if (blocked.length) {
+        setPendingAction(action);
+        setReviewQueue(blocked);
+        setReviewIndex(0);
+        setReviewReason(overrides[blocked[0].rawMatId] || '');
+        setReviewOpen(true);
+        return;
+      }
+      await finishEnqueue(selectedItemIds, action);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setQueueing(false);
+    }
+  }
+
+  async function queueSelectedForSap() {
+    await ensureDuplicatesThenEnqueue('queue');
+  }
+
+  async function openRowReview(item: IcsoftItemOption) {
+    setPendingAction(null);
+    setReviewQueue([item]);
+    setReviewIndex(0);
+    setReviewReason(overrides[item.rawMatId] || '');
+    setReviewOpen(true);
+    if (reviewResults[item.rawMatId]) return;
+    setReviewLoading(true);
+    setError('');
+    try {
+      const res = await api.reviewDuplicates({ rawMatId: item.rawMatId });
+      const row = res.data[0];
+      if (row) {
+        setReviewResults((prev) => ({ ...prev, [item.rawMatId]: row }));
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setReviewLoading(false);
+    }
+  }
+
+  function closeReview() {
+    setReviewOpen(false);
+    setPendingAction(null);
+    setReviewQueue([]);
+    setReviewIndex(0);
+    setReviewReason('');
+  }
+
+  async function confirmReview() {
+    const current = reviewQueue[reviewIndex];
+    if (!current) {
+      closeReview();
+      return;
+    }
+    const result = reviewResults[current.rawMatId];
+    let nextOverrides = overrides;
+    if (result?.verdict === 'duplicate') {
+      if (reviewReason.trim().length < DUPLICATE_OVERRIDE_MIN_REASON) return;
+      nextOverrides = { ...overrides, [current.rawMatId]: reviewReason.trim() };
+      setOverrides(nextOverrides);
+    }
+    const nextIndex = reviewIndex + 1;
+    if (pendingAction && nextIndex < reviewQueue.length) {
+      const nextItem = reviewQueue[nextIndex];
+      setReviewIndex(nextIndex);
+      setReviewReason(nextOverrides[nextItem.rawMatId] || '');
+      return;
+    }
+    const action = pendingAction;
+    const ids = selectedItemIds;
+    closeReview();
+    if (action) {
+      setQueueing(true);
+      setError('');
+      try {
+        await finishEnqueue(ids, action, nextOverrides);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setQueueing(false);
+      }
     }
   }
 
@@ -121,6 +265,7 @@ export default function IcsoftItemsPage() {
       'Sl No',
       'RawMatCode',
       'RawMatName',
+      'Mat Type',
       'SAP Extended',
       'SAP Pipeline',
       'SAP Item Code',
@@ -242,29 +387,17 @@ export default function IcsoftItemsPage() {
   }
 
   async function runGrid() {
+    if (!allItems && selectedItemIds.length > 0) {
+      await ensureDuplicatesThenEnqueue('grid');
+      return;
+    }
     setLoadingGrid(true);
     setError('');
     try {
-      // Specific selection → create/refresh SAP pipeline batch, then load grid.
-      if (!allItems && selectedItemIds.length > 0) {
-        setQueueing(true);
-        try {
-          const queued = await api.enqueuePipeline(selectedItemIds);
-          setToast(
-            `Batch of ${queued.data.length} item(s) ready · Extended vs Not yet shown in grid`,
-          );
-        } catch (qe) {
-          // Still load the grid even if queue fails (e.g. offline mock)
-          setToast(`Grid loaded · queue warning: ${(qe as Error).message}`);
-        } finally {
-          setQueueing(false);
-        }
-      }
-
       const res = await api.icsoftGrid({
         selectedGrnTypes: selectedCategories,
-        selectedRawMatIds: allItems ? [] : selectedItemIds,
-        allItems: allItems || selectedItemIds.length === 0,
+        selectedRawMatIds: [],
+        allItems: true,
       });
       setRows(res.data);
       setHasRun(true);
@@ -463,7 +596,7 @@ export default function IcsoftItemsPage() {
             </div>
           </div>
           <CardBody className="p-0">
-            <div className="scroll-panel max-h-[232px]">
+            <div className="scroll-panel max-h-[280px]">
               {loadingItems ? (
                 <div className="flex items-center gap-2 px-3 py-6 text-[13px] text-[var(--text-muted)]">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -482,8 +615,11 @@ export default function IcsoftItemsPage() {
                     </label>
                   </li>
                   {hiddenSelectedItems.map((item) => (
-                    <li key={`selected-${item.rawMatId}`}>
-                      <label className="flex cursor-pointer items-center gap-2.5 bg-[color-mix(in_srgb,var(--primary)_6%,transparent)] px-3 py-2 text-[13px] hover:bg-[var(--hover)]">
+                    <li
+                      key={`selected-${item.rawMatId}`}
+                      className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--primary)_6%,transparent)] px-3 py-1.5 hover:bg-[var(--hover)]"
+                    >
+                      <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-[13px]">
                         <input
                           type="checkbox"
                           checked
@@ -494,8 +630,15 @@ export default function IcsoftItemsPage() {
                           <span className="text-[var(--text-muted)]"> | </span>
                           <span>{item.rawMatName}</span>
                         </span>
-                        <Badge tone="success">Selected</Badge>
                       </label>
+                      <Badge tone="success">Selected</Badge>
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_10%,transparent)]"
+                        onClick={() => void openRowReview(item)}
+                      >
+                        Review Duplicate Item
+                      </button>
                     </li>
                   ))}
                   {itemOptions.length === 0 && hiddenSelectedItems.length === 0 ? (
@@ -507,8 +650,11 @@ export default function IcsoftItemsPage() {
                       const checked =
                         !allItems && selectedItemIds.includes(item.rawMatId);
                       return (
-                        <li key={item.rawMatId}>
-                          <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-[var(--hover)]">
+                        <li
+                          key={item.rawMatId}
+                          className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-[var(--hover)]"
+                        >
+                          <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-[13px]">
                             <input
                               type="checkbox"
                               checked={checked}
@@ -520,6 +666,13 @@ export default function IcsoftItemsPage() {
                               <span>{item.rawMatName}</span>
                             </span>
                           </label>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_10%,transparent)]"
+                            onClick={() => void openRowReview(item)}
+                          >
+                            Review Duplicate Item
+                          </button>
                         </li>
                       );
                     })
@@ -630,7 +783,8 @@ export default function IcsoftItemsPage() {
                           col === 'Weight' ||
                           col === 'HSNCode' ||
                           col === 'Prefix' ||
-                          col === 'SAP Item Code';
+                          col === 'SAP Item Code' ||
+                          col === 'Mat Type';
                         return (
                           <td
                             key={col}
@@ -665,6 +819,8 @@ export default function IcsoftItemsPage() {
                               >
                                 {display}
                               </Badge>
+                            ) : col === 'Mat Type' ? (
+                              <Badge>{display}</Badge>
                             ) : col === 'Description' ? (
                               <span className="line-clamp-3 leading-snug">{display}</span>
                             ) : col === 'RawMatName' ? (
@@ -698,6 +854,28 @@ export default function IcsoftItemsPage() {
         open={drawerOpen}
         row={selectedRow}
         onClose={() => setDrawerOpen(false)}
+      />
+
+      <DuplicateReviewPanel
+        open={reviewOpen}
+        loading={reviewLoading}
+        itemCode={reviewQueue[reviewIndex]?.rawMatCode || ''}
+        itemName={reviewQueue[reviewIndex]?.rawMatName || ''}
+        result={
+          reviewQueue[reviewIndex]
+            ? reviewResults[reviewQueue[reviewIndex].rawMatId] || null
+            : null
+        }
+        reason={reviewReason}
+        onReasonChange={setReviewReason}
+        requireOverride={Boolean(pendingAction) || reviewResults[reviewQueue[reviewIndex]?.rawMatId || -1]?.verdict === 'duplicate'}
+        queuePosition={
+          reviewQueue.length > 1
+            ? { index: reviewIndex, total: reviewQueue.length }
+            : null
+        }
+        onClose={closeReview}
+        onConfirm={() => void confirmReview()}
       />
     </div>
   );

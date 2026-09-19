@@ -6,6 +6,7 @@ import {
   Boxes,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   LayoutDashboard,
   PackagePlus,
   Settings2,
@@ -14,6 +15,7 @@ import {
 import { cn } from '@/lib/cn';
 
 const NAV = [
+  { href: '/master-data-tracking', label: 'Master Data Tracking', icon: ClipboardList },
   { href: '/', label: 'Operations', icon: LayoutDashboard },
   { href: '/icsoft-items', label: 'IcSoft Items', icon: Warehouse },
   { href: '/sap-items', label: 'SAP Item Creation', icon: PackagePlus },

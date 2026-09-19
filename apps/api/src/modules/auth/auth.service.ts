@@ -21,17 +21,27 @@ type InternalEnvelope<T> = {
   data?: T;
 };
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    // ConfigModule loads .env after process start; apply here so self-signed
+    // Internal-API HTTPS is accepted even if main.ts ran before dotenv.
+    if (this.config.get<string>('INTERNAL_API_TLS_INSECURE') === 'true') {
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    }
+  }
 
   private internalBase(): string {
     const base =
       this.config.get<string>('INTERNAL_API_URL') ||
       'https://testv2.kiswok.com/api';
-    return base.replace(/\/$/, '');
+    return base.replace(/\/$/, '').replace('://localhost', '://127.0.0.1');
   }
 
   private jwtSecret(): string | undefined {
@@ -57,15 +67,32 @@ export class AuthService {
       headers.Authorization = `Bearer ${init.token}`;
     }
 
-    let res: Response;
-    try {
-      res = await fetch(url, {
-        method: init?.method || 'GET',
-        headers,
-        body: init?.body,
-      });
-    } catch (err) {
-      this.logger.error(`Internal-API unreachable: ${url}`, err as Error);
+    const attempts = 3;
+    let res: Response | undefined;
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        res = await fetch(url, {
+          method: init?.method || 'GET',
+          headers,
+          body: init?.body,
+        });
+        lastErr = undefined;
+        break;
+      } catch (err) {
+        lastErr = err;
+        this.logger.warn(
+          `Internal-API attempt ${attempt}/${attempts} failed: ${url} — ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+        if (attempt < attempts) {
+          await sleep(250 * attempt);
+        }
+      }
+    }
+    if (!res) {
+      this.logger.error(`Internal-API unreachable: ${url}`, lastErr as Error);
       throw new BadGatewayException(
         `Unable to reach Internal-API at ${this.internalBase()} — start Internal-API or set INTERNAL_API_URL (VPN may be required)`,
       );

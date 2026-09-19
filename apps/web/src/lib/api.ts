@@ -1,4 +1,34 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4010/api';
+import { getApiBase } from '@/lib/api-base';
+import type {
+  DuplicateCheckResult,
+  DuplicateOverride,
+} from '@kiswok/shared';
+
+export type { DuplicateCheckResult, DuplicateMatch, DuplicateOverride, DuplicateVerdict } from '@kiswok/shared';
+
+export class ApiError extends Error {
+  status: number;
+  body: Record<string, unknown> | null;
+  constructor(
+    message: string,
+    status: number,
+    body: Record<string, unknown> | null = null,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export function duplicateConflictResults(err: unknown): DuplicateCheckResult[] {
+  if (!(err instanceof ApiError) || err.status !== 409) return [];
+  const msg = err.body?.message;
+  if (msg && typeof msg === 'object' && Array.isArray((msg as { blocked?: unknown }).blocked)) {
+    return (msg as { blocked: DuplicateCheckResult[] }).blocked;
+  }
+  return [];
+}
 
 function authHeaders(): Record<string, string> {
   if (typeof window === 'undefined') return {};
@@ -7,7 +37,7 @@ function authHeaders(): Record<string, string> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${getApiBase()}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -26,13 +56,23 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     let message = res.statusText;
+    let body: Record<string, unknown> | null = null;
     try {
-      const body = await res.json();
-      message = body.message?.message || body.message || JSON.stringify(body);
+      body = (await res.json()) as Record<string, unknown>;
+      const raw = body.message as { message?: string } | string | undefined;
+      message =
+        (typeof raw === 'object' && raw?.message) ||
+        (typeof raw === 'string' ? raw : null) ||
+        (typeof body.message === 'string' ? body.message : null) ||
+        JSON.stringify(body);
     } catch {
       /* ignore */
     }
-    throw new Error(typeof message === 'string' ? message : 'Request failed');
+    throw new ApiError(
+      typeof message === 'string' ? message : 'Request failed',
+      res.status,
+      body,
+    );
   }
   if (res.headers.get('content-type')?.includes('application/xml')) {
     return res as unknown as T;
@@ -44,6 +84,8 @@ export type SapSourceItem = {
   IcsoftCode: string;
   sap_item_code: string | null;
   ProductGroup: string | null;
+  /** SAP MTART from sap_live_item_master (or peer mat_group majority). */
+  productType?: string | null;
   Rawmatname: string | null;
   grntype?: string | null;
   sap_mat_grp_text?: string | null;
@@ -81,7 +123,7 @@ export type WizardAnswers = {
   accountAssignmentGroup: string;
   country: string;
   plant: string;
-  mrpType: 'PD' | 'ND';
+  mrpType: string;
   mrpController: string;
   availabilityCheck: string;
   profitCenter: string;
@@ -120,11 +162,14 @@ export const api = {
       `/sap-items/candidates?q=${encodeURIComponent(q)}&limit=50`,
     ),
   startWizard: (
-    rawMatId: number,
+    rawMatId: number | undefined,
     overrides?: {
       plant?: string;
       storageLocation?: string;
       locationId?: number;
+      pipelineEntryId?: string;
+      plants?: string[];
+      slocs?: string[];
     },
   ) =>
     request<{
@@ -141,6 +186,9 @@ export const api = {
         plant: overrides?.plant,
         storageLocation: overrides?.storageLocation,
         locationId: overrides?.locationId,
+        pipelineEntryId: overrides?.pipelineEntryId,
+        plants: overrides?.plants,
+        slocs: overrides?.slocs,
       }),
     }),
   preview: (source: SapSourceItem, answers: WizardAnswers) =>
@@ -191,10 +239,19 @@ export const api = {
         distributionChannels: Array<{ value: string; label: string }>;
         plants: Array<{ value: string; label: string }>;
         storageLocations: string[];
+        storageLocationsByPlant?: Record<string, string[]>;
+        materialGroups?: Array<{ value: string; label: string }>;
+        hsnCodes?: Array<{ value: string; label: string; kind?: string }>;
+        uoms?: Array<{ value: string; label: string }>;
+        departments?: Array<{ value: string; label: string }>;
+        locations?: Array<{ value: string; label: string; plant?: string }>;
+        storageLocationOptions?: Array<{ value: string; label: string; plant?: string }>;
+        masters?: { hsnCodes?: number; materialGroups?: number };
+        masterPattern?: { loaded: boolean; rows?: number; uniqueProducts?: number };
       };
     }>('/sap-items/lookups'),
   exportUrl: (batchId: string, regenerate = false) =>
-    `${API_URL}/sap-items/batches/${batchId}/export${regenerate ? '?regenerate=true' : ''}`,
+    `${getApiBase()}/sap-items/batches/${batchId}/export${regenerate ? '?regenerate=true' : ''}`,
 
   listPipeline: (stage?: SapPipelineStage) =>
     request<{
@@ -211,6 +268,7 @@ export const api = {
       storageLocation?: string;
       locationId?: number;
     }>,
+    overrides?: Array<{ rawMatId: number; reason: string }>,
   ) =>
     request<{
       success: boolean;
@@ -218,8 +276,80 @@ export const api = {
       counts: Record<SapPipelineStage, number>;
     }>('/sap-items/pipeline/enqueue', {
       method: 'POST',
-      body: JSON.stringify({ rawMatIds, hints }),
+      body: JSON.stringify({ rawMatIds, hints, overrides }),
     }),
+
+  createManualItem: (payload: {
+    requester: {
+      name: string;
+      empCode: string;
+      loginId: string;
+      email: string;
+      deptId: number;
+      deptName?: string;
+      locationId?: number;
+      locationName?: string;
+      locationIds?: number[];
+      locationNames?: string[];
+      justification: string;
+    };
+    productType: string;
+    description: string;
+    productGroup: string;
+    hsnCode: string;
+    hsnOther?: boolean;
+    baseUom: string;
+    plants: string[];
+    storageLocations?: string[];
+    locationIds?: number[];
+    proposedCode?: string;
+    duplicateOverrideReason?: string;
+  }) =>
+    request<{
+      success: boolean;
+      data: SapPipelineEntry;
+      counts: Record<SapPipelineStage, number>;
+    }>('/sap-items/pipeline/manual', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  commitPipelinePending: (pipelineEntryIds?: string[]) =>
+    request<{
+      success: boolean;
+      data: {
+        batchId: string;
+        requested: number;
+        committed: number;
+        failed: Array<{ id: string; icsoftCode: string; error: string }>;
+        sample: Array<{
+          id: string;
+          icsoftCode: string;
+          productType: string;
+          plants: string[];
+          storageLocations: string[];
+        }>;
+        counts: Record<SapPipelineStage, number>;
+      };
+      counts: Record<SapPipelineStage, number>;
+    }>('/sap-items/pipeline/commit-pending', {
+      method: 'POST',
+      body: JSON.stringify({ pipelineEntryIds }),
+    }),
+
+  reviewDuplicates: (body: {
+    rawMatId?: number;
+    rawMatIds?: number[];
+    description?: string;
+    rawMatCode?: string;
+    hsn?: string;
+    uom?: string;
+    limit?: number;
+  }) =>
+    request<{ success: boolean; data: DuplicateCheckResult[] }>(
+      '/sap-items/duplicates',
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
 
   updatePipelineSapCode: (id: string, sapItemCode: string) =>
     request<{
@@ -231,6 +361,60 @@ export const api = {
       body: JSON.stringify({ sapItemCode }),
     }),
 
+  downloadSapCodeTemplate: async () => {
+    const res = await fetch(`${getApiBase()}/sap-items/pipeline/sap-code-template`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      let message = 'Template download failed';
+      try {
+        const body = await res.json();
+        message = body.message?.message || body.message || message;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(typeof message === 'string' ? message : 'Template download failed');
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') || '';
+    const match = cd.match(/filename="([^"]+)"/);
+    const filename = match?.[1] || 'SAP_Item_Codes_Upload.xlsx';
+    return { blob, filename };
+  },
+
+  bulkUploadSapCodes: async (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${getApiBase()}/sap-items/pipeline/sap-code-bulk`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: form,
+    });
+    if (res.status === 401 && typeof window !== 'undefined') {
+      window.localStorage.removeItem('token');
+      window.localStorage.removeItem('userInfo');
+      document.cookie = 'kiswok_auth=; path=/; Max-Age=0; SameSite=Lax';
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+      }
+    }
+    if (!res.ok) {
+      let message = 'Bulk upload failed';
+      try {
+        const body = await res.json();
+        message = body.message?.message || body.message || message;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(typeof message === 'string' ? message : 'Bulk upload failed');
+    }
+    return res.json() as Promise<{
+      success: boolean;
+      data: BulkSapCodeResult;
+      counts: Record<SapPipelineStage, number>;
+    }>;
+  },
+
   removePipelineEntry: (id: string) =>
     request<{
       success: boolean;
@@ -239,7 +423,7 @@ export const api = {
 
   exportBatch: async (batchId: string, regenerate = false) => {
     const res = await fetch(
-      `${API_URL}/sap-items/batches/${batchId}/export${regenerate ? '?regenerate=true' : ''}`,
+      `${getApiBase()}/sap-items/batches/${batchId}/export${regenerate ? '?regenerate=true' : ''}`,
       { headers: authHeaders() },
     );
     if (!res.ok) throw new Error('Export failed');
@@ -256,7 +440,7 @@ export const api = {
     regenerate = false,
     format: 'xml' | 'xlsx' = 'xml',
   ) => {
-    const res = await fetch(`${API_URL}/sap-items/pipeline/export`, {
+    const res = await fetch(`${getApiBase()}/sap-items/pipeline/export`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ pipelineEntryIds, regenerate, format }),
@@ -278,7 +462,9 @@ export const api = {
     const fallback =
       format === 'xlsx' ? 'SAP_Product_ZRAW_selected.xlsx' : 'SAP_Product_ZRAW_selected.xml';
     const filename = match?.[1] || fallback;
-    return { blob, filename, regenerated, format };
+    const excludedCount = Number(res.headers.get('X-SAP-Excluded-Count') || '0');
+    const excludedSample = res.headers.get('X-SAP-Excluded-Sample') || '';
+    return { blob, filename, regenerated, format, excludedCount, excludedSample };
   },
 
   icsoftCategories: () =>
@@ -319,6 +505,7 @@ export type SapPipelineEntry = {
   rawMatId: number;
   icsoftCode: string;
   rawMatName: string | null;
+  productType?: string | null;
   productGroup: string | null;
   baseUom: string | null;
   plant: string | null;
@@ -336,6 +523,61 @@ export type SapPipelineEntry = {
   processedAt: string | null;
   exportedAt: string | null;
   updatedAt: string;
+  duplicateReview?: DuplicateOverride | null;
+  alreadyInSap?: { sapCode: string; reason: string } | null;
+  origin?: 'icsoft' | 'manual';
+  requestedBy?: {
+    name: string;
+    empCode: string;
+    loginId: string;
+    email: string;
+    deptId: number | null;
+    deptName?: string | null;
+    locationId: number | null;
+    locationName?: string | null;
+    locationIds?: number[];
+    locationNames?: string[];
+    justification: string;
+  } | null;
+  plants?: string[] | null;
+  slocs?: string[] | null;
+  locationIds?: number[] | null;
+};
+
+export type BulkSapCodeResult = {
+  updated: Array<{ icsoftCode: string; rawMatId: number; sapItemCode: string }>;
+  skippedExisting: Array<{
+    icsoftCode: string;
+    rawMatId: number;
+    existingSapItemCode: string;
+    uploadedSapItemCode: string;
+  }>;
+  mismatches: Array<{
+    icsoftCode: string;
+    rawMatId: number;
+    oldSapItemCode: string;
+    newSapItemCode: string;
+  }>;
+  skippedBlank: Array<{ icsoftCode: string; rawMatId: number }>;
+  skippedUnchanged: Array<{
+    icsoftCode: string;
+    rawMatId: number;
+    sapItemCode: string;
+  }>;
+  notFound: Array<{
+    icsoftCode: string | null;
+    rawMatId: number | null;
+    sapItemCode: string | null;
+  }>;
+  totals: {
+    rowsRead: number;
+    updated: number;
+    skippedExisting: number;
+    mismatches: number;
+    skippedBlank: number;
+    skippedUnchanged: number;
+    notFound: number;
+  };
 };
 
 export type IcsoftCategory = {

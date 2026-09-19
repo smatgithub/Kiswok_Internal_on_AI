@@ -87,6 +87,13 @@ export class BatchStoreService {
     return this.save(batch);
   }
 
+  /** One write after a bulk commit — avoids rewriting a growing JSON file per item. */
+  addItems(batchId: string, items: CommittedItem[]): BatchState {
+    const batch = this.get(batchId);
+    batch.items.push(...items);
+    return this.save(batch);
+  }
+
   updateItem(batchId: string, itemId: string, patch: Partial<CommittedItem>): BatchState {
     const batch = this.get(batchId);
     const idx = batch.items.findIndex((i) => i.id === itemId);

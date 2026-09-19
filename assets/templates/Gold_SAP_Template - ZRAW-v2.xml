@@ -6,17 +6,17 @@ xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:dt="uuid:C2F41010-65B3-11
 xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">
   <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
     <Title>PRODUCT</Title>
-    <Author>CB9980000010</Author>
+    <Author>CB9980000061</Author>
     <Keywords>Adjusted Scope</Keywords>
-    <LastAuthor>CB9980000010</LastAuthor>
-    <Created>20260907</Created>
-    <Company>CB9980000010</Company>
+    <LastAuthor>CB9980000061</LastAuthor>
+    <Created>20260729</Created>
+    <Company>CB9980000061</Company>
   </DocumentProperties>
   <CustomDocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
     <APPLICATION dt:dt="string">SLO</APPLICATION>
     <OBJECT_NAME dt:dt="string">Product</OBJECT_NAME>
-    <VERSION dt:dt="string">SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026</VERSION>
-    <SYSTEM dt:dt="string">ILI / 100</SYSTEM>
+    <VERSION dt:dt="string">SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026</VERSION>
+    <SYSTEM dt:dt="string">HJF / 100</SYSTEM>
     <LANGUAGE dt:dt="string">E</LANGUAGE>
     <IS_S4H_CLOUD dt:dt="string">X</IS_S4H_CLOUD>
   </CustomDocumentProperties>
@@ -990,7 +990,7 @@ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w
     <Cell ss:MergeAcross="8"><Data ss:Type="String">Introduction to Data Migration Templates</Data><NamedCell ss:Name="Fields"/></Cell>
    </Row>
    <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
-    <Cell ss:MergeAcross="8"><Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data></Cell>
+    <Cell ss:MergeAcross="8"><Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data></Cell>
    </Row>
 <Row ss:Height="15"><Cell ss:Index="2" ss:MergeAcross="4" ss:StyleID="BACKGROUND"/></Row>
 <Row><Cell ss:Index="2" ss:StyleID="INTRO"/><Cell ss:StyleID="INTRO"/><Cell ss:StyleID="INTRO"/><Cell ss:StyleID="INTRO"/></Row>
@@ -1016,9 +1016,9 @@ some are optional.
 <Cell ss:Index="2" ss:StyleID="INTRO"/>
 <Cell ss:MergeAcross="1" ss:StyleID="INTRO"><Data ss:Type="String">A migration template is based on the active view of the relevant
 migration object. You can find information about the active view in the
-Microsoft Excel XML file. In the file, navigate to <LS>File </>->
-<LS>Info</>. You can find the active view name under <LS>Properties
-</>-> <LS>Tags</>.
+Microsoft Excel XML file. In the file, navigate to <LS>File </LS>->
+<LS>Info</LS>. You can find the active view name under <LS>Properties
+</LS>-> <LS>Tags</LS>.
 </Data></Cell><Cell ss:StyleID="INTRO"/></Row>
 <Row>
 <Cell ss:Index="2" ss:StyleID="INTRO"/>
@@ -1434,7 +1434,7 @@ migration cockpit.
     <Cell ss:MergeAcross="8"><Data ss:Type="String">Field List for Migration Object: Product</Data><NamedCell ss:Name="Fields"/></Cell>
    </Row>
    <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
-    <Cell ss:MergeAcross="8"><Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data></Cell>
+    <Cell ss:MergeAcross="8"><Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data></Cell>
    </Row>
    <Row ss:AutoFitHeight="0" ss:StyleID="INFORMATION">
     <Cell ss:Index="2" ss:MergeAcross="6"><Data ss:Type="String"></Data></Cell>
@@ -6067,7 +6067,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -6410,7 +6410,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -6514,7 +6514,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -6645,7 +6645,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -6750,7 +6750,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -6898,7 +6898,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -7077,7 +7077,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -7278,7 +7278,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -7538,7 +7538,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -8019,7 +8019,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -8161,7 +8161,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -8275,7 +8275,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -8447,7 +8447,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -8634,7 +8634,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -8860,7 +8860,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -9075,7 +9075,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">
@@ -9193,7 +9193,7 @@ migration cockpit.
       </Row>
       <Row ss:AutoFitHeight="0" ss:StyleID="VERSION">
         <Cell ss:MergeAcross="14">
-          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2608 - Adjusted Scope - 08.09.2026 © Copyright SAP SE. All rights reserved.</Data>
+          <Data ss:Type="String">Version SAP S/4HANA CLOUD 2602 - Adjusted Scope - 30.07.2026 © Copyright SAP SE. All rights reserved.</Data>
         </Cell>
       </Row>
       <Row ss:AutoFitHeight="0" ss:Height="12" ss:StyleID="BACKGROUND">

@@ -9,11 +9,14 @@ build/
 ._*
 .tmp_venv/
 data/batches/
+data/sap-material-master-products.json
 apps/api/data/
 apps/api/tmp/
 apps/api/dist/
 apps/api/.env
 *.bak
+assets/templates/~$*
+assets/templates/SAP Material Master List*.xlsx
 *.bak-*
 *.bak-with-sample-data
 *.bak-with-sample-data.xml

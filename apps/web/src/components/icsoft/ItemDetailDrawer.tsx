@@ -29,7 +29,7 @@ export const ITEM_PROPERTY_GROUPS: PropertyGroup[] = [
   {
     id: 'classification',
     title: 'Classification',
-    fields: ['Main Category', 'Item Category', 'Inspection Reqired'],
+    fields: ['Main Category', 'Item Category', 'Mat Type', 'Inspection Reqired'],
   },
   {
     id: 'units',
@@ -103,6 +103,7 @@ export function ItemDetailDrawer({
 
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState('');
+  const [extendError, setExtendError] = useState('');
   const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
   const [selectedLocationKey, setSelectedLocationKey] = useState<string | null>(null);
 
@@ -120,12 +121,14 @@ export function ItemDetailDrawer({
       setDetailRow(null);
       setSelectedLocationKey(null);
       setDetailError('');
+      setExtendError('');
       return;
     }
 
     let cancelled = false;
     setLoadingDetail(true);
     setDetailError('');
+    setExtendError('');
     setDetailRow(null);
     setSelectedLocationKey(null);
 
@@ -194,10 +197,14 @@ export function ItemDetailDrawer({
           },
         ]
       : undefined;
+    setExtendError('');
     try {
       await api.enqueuePipeline([rawMatId], hints);
-    } catch {
-      /* navigate anyway — wizard will load item */
+    } catch (e) {
+      setExtendError(
+        `${(e as Error).message} Use Review Duplicate Item on the item list to confirm, then try again.`,
+      );
+      return;
     }
     const params = new URLSearchParams({
       extendRawMatId: String(rawMatId),
@@ -287,6 +294,11 @@ export function ItemDetailDrawer({
               {detailError ? (
                 <div className="rounded-[10px] border border-[color-mix(in_srgb,var(--warning)_35%,transparent)] bg-[var(--warning-bg)] px-3 py-2 text-[12px] text-[var(--warning)]">
                   Full detail load failed ({detailError}). Showing grid summary.
+                </div>
+              ) : null}
+              {extendError ? (
+                <div className="rounded-[10px] border border-[color-mix(in_srgb,var(--danger)_30%,transparent)] bg-[var(--danger-bg)] px-3 py-2 text-[12px] text-[var(--danger)]">
+                  {extendError}
                 </div>
               ) : null}
 

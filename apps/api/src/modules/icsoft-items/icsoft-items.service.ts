@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import * as sql from 'mssql';
 import { DatabaseService } from '../../database/database.service';
 import { PipelineStoreService } from '../sap-item/pipeline-store.service';
+import { SAP_GRN_TO_MTART_CASE_SQL } from '../sap-item/queries';
 
 export type ItemCategory = {
   grnTypeId: number | null;
@@ -129,6 +130,9 @@ function uniqueIds(ids: number[]): number[] {
 
 @Injectable()
 export class IcsoftItemsService {
+  private categoryCache: { at: number; data: ItemCategory[] } | null = null;
+  private static readonly CATEGORY_TTL_MS = 60_000;
+
   constructor(
     private readonly db: DatabaseService,
     private readonly config: ConfigService,
@@ -148,6 +152,13 @@ export class IcsoftItemsService {
   async getCategories(): Promise<ItemCategory[]> {
     if (this.useMock()) return MOCK_CATEGORIES;
 
+    if (
+      this.categoryCache &&
+      Date.now() - this.categoryCache.at < IcsoftItemsService.CATEGORY_TTL_MS
+    ) {
+      return this.categoryCache.data;
+    }
+
     try {
       const rows = await this.db.run(this.dbName(), async (request) =>
         request.query(`
@@ -161,7 +172,7 @@ export class IcsoftItemsService {
         `),
       );
 
-      return rows.map((row) => {
+      const data = rows.map((row) => {
         const r = row as Record<string, unknown>;
         const sub = parseIdList(r.SubgrntypeIds ?? r.subgrntypeids);
         const ownId =
@@ -176,6 +187,8 @@ export class IcsoftItemsService {
             r.SubgrntypeIds != null ? String(r.SubgrntypeIds) : null,
         };
       });
+      this.categoryCache = { at: Date.now(), data };
+      return data;
     } catch (err) {
       throw new ServiceUnavailableException(
         `Category query failed: ${(err as Error).message}`,
@@ -305,6 +318,14 @@ export class IcsoftItemsService {
           'Sl No': idx + 1,
           RawMatCode: item.rawMatCode,
           RawMatName: item.rawMatName,
+          'Mat Type':
+            item.rawMatCode.startsWith('SER')
+              ? 'ZSRV'
+              : item.rawMatCode.startsWith('SPARES') || item.grnTypeId === 19
+                ? 'ZSPT'
+                : item.rawMatCode.startsWith('CON') || item.grnTypeId === 2
+                  ? 'ZCON'
+                  : 'ZRAW',
           'SAP Extended': item.rawMatId % 3 === 0 ? 'Extended' : 'Not yet',
           'SAP Item Code': item.rawMatId % 3 === 0 ? `MOCK-${item.rawMatId}` : null,
           'SAP Pipeline': '—',
@@ -369,6 +390,7 @@ export class IcsoftItemsService {
             R.RawMatID,
             R.RawMatCode,
             R.RawMatName,
+            ${SAP_GRN_TO_MTART_CASE_SQL} AS [Mat Type],
             CASE
               WHEN snim.rawmatid IS NOT NULL THEN 'Extended'
               ELSE 'Not yet'
@@ -493,6 +515,12 @@ export class IcsoftItemsService {
         ...row,
         'SAP Extended': extended ? 'Extended' : 'Not yet',
         'SAP Pipeline': entry ? stageLabel[entry.stage] || entry.stage : '—',
+        'Mat Type':
+          entry?.answers?.productType ||
+          entry?.productType ||
+          entry?.source?.productType ||
+          row['Mat Type'] ||
+          null,
         'SAP Item Code':
           row['SAP Item Code'] ||
           entry?.sapItemCode ||
@@ -517,6 +545,10 @@ export class IcsoftItemsService {
           RawMatID: option.rawMatId,
           RawMatCode: option.rawMatCode,
           RawMatName: option.rawMatName,
+          'Mat Type':
+            option.rawMatCode.startsWith('SPARES') ? 'ZSPT'
+              : option.rawMatCode.startsWith('CON') ? 'ZCON'
+                : 'ZRAW',
           Description: option.rawMatName,
           'Item Category':
             MOCK_CATEGORIES.find((c) => c.subGrnTypeIds.includes(option.grnTypeId || -1))
@@ -570,6 +602,7 @@ export class IcsoftItemsService {
             R.RawMatID,
             R.RawMatCode,
             R.RawMatName,
+            ${SAP_GRN_TO_MTART_CASE_SQL} AS [Mat Type],
             CASE
               WHEN InspecReq = 0 THEN 'Inspection Not Reqired'
               ELSE 'Inspection Required'
