@@ -8,6 +8,7 @@ import {
   isFinishedProduct,
   isSpareProduct,
   isConsumableProduct,
+  isNonValuedProduct,
   DEFAULT_KISWOK_PLANTS,
   plantsForProductType,
   TRANSPORTATION_GROUP,
@@ -34,7 +35,7 @@ const VALUATION_CLASS_BY_PRODUCT_TYPE: Record<string, string> = {
 
 export function valuationClassForProductType(productType: string): string {
   const code = (productType || 'ZRAW').trim().toUpperCase();
-  if (isServiceProduct(code)) return '';
+  if (isServiceProduct(code) || isNonValuedProduct(code)) return '';
   return VALUATION_CLASS_BY_PRODUCT_TYPE[code] || '3000';
 }
 
@@ -190,7 +191,7 @@ export function buildSheetRows(answers: WizardAnswers): Record<string, Record<st
   const spare = isSpareProduct(answers.productType);
   const consumable = isConsumableProduct(answers.productType);
   const finished = isFinishedProduct(answers.productType);
-  const valuated = !service;
+  const valuated = !service && !isNonValuedProduct(answers.productType);
   const storageLocs = service
     ? []
     : answers.storageLocations?.length

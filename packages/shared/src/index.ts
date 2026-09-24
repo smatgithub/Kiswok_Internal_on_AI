@@ -410,6 +410,45 @@ export function isFinishedProduct(productType?: string | null): boolean {
   return t === 'ZFGM' || t === 'ZSFG';
 }
 
+/**
+ * Material types whose SAP MMKDS Value Update is Non Valued.
+ * They must not get a raw-material valuation class (3000) or quality view.
+ */
+export function isNonValuedProduct(productType?: string | null): boolean {
+  const t = String(productType || '').trim().toUpperCase();
+  return (
+    t === 'ZCAP' ||
+    t === 'ZSCP' ||
+    t === 'ZEMP' ||
+    t === 'ZBYP' ||
+    t === 'ZPAT' ||
+    t === 'ZSRV'
+  );
+}
+
+/** Types that use SAP internal numeric product numbers (not IcSoft as MATNR). */
+export function usesInternalProductNumber(productType?: string | null): boolean {
+  const t = String(productType || '').trim().toUpperCase();
+  return [
+    'ZRAW',
+    'ZPKG',
+    'ZSPT',
+    'ZCON',
+    'ZSRV',
+    'ZSCP',
+    'ZCAP',
+    'ZEMP',
+    'ZBYP',
+    'ZCOP',
+    'ZFRT',
+    'ZBRG',
+    'ZPRT',
+    'ZPRA',
+    'ZCMP',
+    'ZINP',
+  ].includes(t);
+}
+
 /** General / sales item category: SERV for Service, NORM for all other materials. */
 export function itemCategoryForProductType(
   productType?: string | null,
@@ -511,11 +550,17 @@ export function applyProductTypeStandards(answers: WizardAnswers): WizardAnswers
   } else {
     next.loadingGroup = TRANSPORTATION_GROUP;
     if (isConsumableProduct(productType)) next.viewStorage = true;
+    if (isNonValuedProduct(productType)) next.viewQuality = false;
     if (!next.mrpType) next.mrpType = 'PD';
     if (!next.mrpController) next.mrpController = '0001';
     if (!next.lotSizingProcedure) next.lotSizingProcedure = 'EX';
     if (!next.strategyGroup) next.strategyGroup = '10';
     if (!next.weightUom) next.weightUom = WEIGHT_UOM_ISO;
+    // Sales view makes GEWEI mandatory; SAP rejects unit-of-weight without a quantity.
+    if (next.viewSales !== false) {
+      if (!String(next.grossWeight || '').trim()) next.grossWeight = '1';
+      if (!String(next.netWeight || '').trim()) next.netWeight = '1';
+    }
   }
   return next;
 }
